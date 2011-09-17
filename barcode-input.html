@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="ru"> <head>
+<meta charset="UTF-8">
+<body><head><title>Штрихкод</title></head>
+<script language="JavaScript">
+
+/**
+ * Anonymous function for reading EAN13/USC12 code from barcode scanner.
+ * Part of s03-inv project.
+ *
+ * @param {Object}	fnInputComplete - callback function, that's passed succesfull input from scaner
+ * @param {Object}	hParam - hash with configuration parameters
+ */
+
+(function(fnInputComplete, hParam) {
+	
+	// TODO: hParam check
+	
+	// this timeout limits time to read sequence from scanner
+	// now can be only global, because I don't know how to make clearTimeout for local timer :(
+	// and now it's not used
+	tBarcodeReadingTimer = null;
+
+	// flag - true when we reading barcode sequence, false if not
+	var isBarcodeReading = false;
+
+	// this string store result of reading
+	var sScanerInput = null;
+
+	// handle all keypress events:
+	document.onkeyup = checkKeycode;
+
+	/**
+	 * Main function - get some key event and check it.
+	 * If this event is part of sequence from barcode scanner, 
+	 * inputed char will be added to sScanerInput.
+	 *
+	 * If this event is ends sequence from barcode scanner,
+	 * sScanerInput will be passed to callback function.
+	 *
+	 * @param {Object}	e - keypress/keyup/keydown event passed from handler
+	 */
+
+	function checkKeycode(e) {
+		var iKeyCode = (window.event) ? event.keyCode : e.keyCode;
+
+		if(hParam.isValidBarcodeSymbol(iKeyCode) || iKeyCode == hParam.iScanerBreakSymbolCode){
+
+			var sChar = String.fromCharCode(iKeyCode);
+
+			if ( !isBarcodeReading && hParam.isFirstBarcodeSymbol(iKeyCode) ) {
+
+				startBarcodeReading();
+				sScanerInput = sChar;
+
+			} else if (
+				iKeyCode == hParam.iScanerBreakSymbolCode
+				&& sScanerInput.length >= hParam.iBarcodeMinLength
+				&& sScanerInput.length <= hParam.iBarcodeMaxLength
+			) {
+
+				fnInputComplete(sScanerInput);
+				stopBarcodeReading();
+
+			} else if ( isBarcodeReading && hParam.isValidBarcodeSymbol(iKeyCode) ) {
+
+				sScanerInput += sChar;
+
+				if(hParam.iBarcodeThreshold > 0 && sScanerInput.length == hParam.iBarcodeThreshold){
+					hParam.inputThresholdReached(sScanerInput);
+				}
+
+			} else {
+
+				stopBarcodeReading();
+			}
+
+		} else {
+
+			stopBarcodeReading();
+
+		}
+	}
+
+	/**
+	* This function sets all flags and timer for barcode reading
+	*/
+	function startBarcodeReading(){
+		if(!tBarcodeReadingTimer){
+			isBarcodeReading = true;
+			tBarcodeReadingTimer = setTimeout( function (){ stopBarcodeReading() }, hParam.iScanMaxDuration);
+		}
+	}
+
+	/**
+	* This function clears all flags and timer used for barcode reading
+	*/
+	function stopBarcodeReading(){
+		clearTimeout(tBarcodeReadingTimer);
+		tBarcodeReadingTimer = null;
+		isBarcodeReading = false;
+		sScanerInput = '';
+	}
+
+})(
+	//* callback function *//
+	function(sScanerInput){
+		document.getElementById('input').value="";
+		document.getElementById('output').innerHTML += barcodeToInv(sScanerInput,12) + '<br/>';	
+	},
+
+	// * scaner & barcode config hash  *//
+	{
+		// min length of barcode (EAN13 with '0' as first symbol = USC12)
+		iBarcodeMinLength: 12,
+
+		// max length of barcode (now we work only with fixed length barcodes - EAN13)
+		iBarcodeMaxLength: 13,
+
+		// that's symbol finalize sequence reading
+		// 13 = <enter>
+		iScanerBreakSymbolCode: 13,
+
+		iBarcodeThreshold : 7,
+
+		// time limit to read barcode in msecs
+		iScanMaxDuration: 200,
+	
+		/**
+		 * Checks is iKeyCode valid for first barcode symbol
+		 * Keycode interval 48..57 in ascii means 0..9, e.q number.
+		 *
+		 * @param {number}	iKeyCode - is keyup/keypress keyCode
+		 * @return {boolean}	
+		 */
+		isFirstBarcodeSymbol: function (iKeyCode) {
+			//return (iKeyCode >= 48 && iKeyCode <= 52);
+			return (iKeyCode >= 48 && iKeyCode <= 57);
+		},
+
+		/**
+		 * Checks is iKeyCode valid for any barcode symbol.
+		 * Keycode interval 48..57 in ascii means 0..9, e.q number.
+		 * This function written to work only with numeral barcodes.
+		 *
+		 * @param {number}	iKeyCode - is keyup/keypress keyCode
+		 * @return {boolean}	
+		 */
+
+		isValidBarcodeSymbol: function (iKeyCode){
+			return (iKeyCode >= 48 && iKeyCode <= 57);
+		},
+
+		/**
+		*  
+		* @param {String}	Text passed from scanner to this moment
+		*/
+
+		inputThresholdReached: function (sScanerInput){
+			if(bTextFieldActive && document.getElementById('input').value.length > 0){
+				document.getElementById('input').value=sScanerInput;
+			}
+		}
+	}
+);
+
+// Converts inv <-> barcode EAN13
+
+// inv prefix = barcode first digit
+var InvNumberTypes = {
+	'0' : '',
+	'1' : 'ЧМБ',
+	'2' : 'чМБ',
+	'3' : 'ПДЧ',
+	'4' : 'Ч'
+}
+
+function barcodeToInv (sBarcode,iZerofill) {
+	var sPrefix = InvNumberTypes[sBarcode.substr(0,1)];
+	var sNumber = sBarcode.substr(1,sBarcode.length);
+
+	if (iZerofill) {
+		sNumber = Number(sNumber)+'';
+		while (sNumber.length < iZerofill) {
+			sNumber = "0" + sNumber;
+		}
+	} else {
+		sNumber = Number(sNumber)+'';
+	}
+
+	return sPrefix+sNumber;
+}
+
+function invToBarcode (sString,iZerofill) {
+	if ( !isNaN(sString.substr(0,1)) ) {
+		if (iZerofill) {
+			while (sString.length < iZerofill) {
+				sString = "0" + sString;
+			}
+		}
+		return sString;
+	} else {
+		var sPrefix = sString.match(/^\D+/)+'';
+
+		for (i in InvNumberTypes) {
+			if ( sPrefix == InvNumberTypes[i] ) {
+				var sNumber = sString.substr(sPrefix.length,sString.length);
+				if (iZerofill) {
+					sNumber = Number(sNumber)+'';
+					while(sNumber.length < iZerofill) {
+						sNumber = "0" + sNumber;
+					}
+				}
+				return  i + sNumber;
+				break;
+			}
+		}
+	}
+}
+
+function submitSample(){
+	document.getElementById('output').innerHTML += barcodeToInv(document.getElementById('input').value,12) + '<br/>';
+	return false;
+}
+
+</script><form id="test-form" onsubmit="return submitSample()">
+<input type="text" style="width:100%" onfocus="bTextFieldActive=true" onblur="bTextFieldActive=false" id="input"/>
+</form>
+<div id="output"></div>
+</body>
+</html>
