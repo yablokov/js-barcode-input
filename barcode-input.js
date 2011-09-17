@@ -23,6 +23,8 @@
 
     /* Return previous value of global Barcodo object,
      * if requested.
+     * 
+     * @return {Object}
      */
     Barcodo.noConflict = function() {
         root.Barcodo = previousBarcodo;
@@ -77,7 +79,10 @@
                 'startBarcodeReading',
                 'stopBarcodeReading');
         },
-
+       /**
+        * 
+        * @return {boolean}
+        */
         validBarcodeLength: function() {
             if (this.barcode.length >= this.barcodeMinLength &&
                 this.barcode.length <= this.barcodeMaxLength) {
@@ -85,6 +90,12 @@
             } else { return false; }
         },
 
+       /**
+        * Keyup event handler.
+        * Detects barcode sequence from scanner.
+        *
+        * @param {Object}  Keyup event.
+        */
         checkKeycode: function(e) {
             var keyCode = (window.event) ? event.keyCode : e.keyCode;
 
@@ -131,6 +142,9 @@
             }
         },
 
+        /**
+        *  Obvious function name
+        */
         startWatching: function() {
             if (watching)
                 throw new Error('Barcodo is already watching input');
@@ -145,6 +159,8 @@
         /**
         * Sets all flags and timer for barcode reading. Returns true
         * if started reading, false if reading is already in progress.
+        * 
+        * @return {boolean}
         */
         startBarcodeReading: function() {
             if (this.isBarcodeReading == false) {
@@ -162,6 +178,8 @@
 
         /**
         * Clears flags, barcode, and the timer used for barcode reading.
+        * 
+        * @return {boolean}
         */
         stopBarcodeReading: function() {
             if (this.isBarcodeReading == true) {

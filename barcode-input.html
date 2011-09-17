@@ -5,19 +5,22 @@
         <title>Barcode</title>
         <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"
             ></script>
-        <script src="underscore.js"></script>
+        <script src="http://documentcloud.github.com/underscore/underscore-min.js"
+            ></script>
         <script src="barcode-input.js"></script>
         <script>
             var bTextFieldActive = false;
-            $('#barcodeInput').bind('focus', function() {
-                bTextFieldActive = true;
-            });
-            $('#barcodeInput').bind('blur', function() {
-                bTextFieldActive = false;
+            $(document).ready(function(){
+                $('#barcodeInput').bind('focus', function() {
+                    bTextFieldActive = true;
+                });
+                $('#barcodeInput').bind('blur', function() {
+                    bTextFieldActive = false;
+                });
             });
 
             var scanner = new Barcodo.Scanner({
-                maxScanDuration: 2000,
+                maxScanDuration: 200,
                 barcodeMinLength: 12,
                 barcodeMaxLength: 13,
                 barcodeBreakSymbolKeyCode: 13,
@@ -29,11 +32,16 @@
                     return (keycode >= 48 && keycode <= 57);
                 },
                 barcodeStarted: function(barcode) {
-                    $('#input').val("");
+                    if(bTextFieldActive == true) {
+                        $('#barcodeInput').val(barcodeToInv(barcode, 6));
+                    }
                 },
                 barcodeComplete: function(barcode) {
-                    $('#input').val("");
-                    $('#output').html(barcodeToInv(barcode, 12) + '<br/>');
+                    if(bTextFieldActive == false) {
+                        var inv = barcodeToInv(barcode, 12);
+                        $('#barcodeInput').val(inv);
+                        $('#output').append(inv + '<br/>');
+                    }
                 }
             });
             scanner.startWatching();
@@ -92,9 +100,7 @@
             };
 
             var submitSample = function() {
-                $('#output').html(
-                    barcodeToInv($('#barcodeInput').val(), 12) +
-                    '<br/>');
+                $('#output').append($('#barcodeInput').val() + '<br/>');
                 return false;
             };
         </script>
