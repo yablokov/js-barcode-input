@@ -1,9 +1,9 @@
 /**
- * Anonymous function for reading EAN13/USC12 code from barcode scanner.
- * Part of s03-inv project.
- *
- * @param {Object}  opts - an object with configuration parameters
- */
+* Lib for detect EAN13/USC12 input sequence from barcode scanner.
+* Part of s03-inv project.
+*
+* required: underscore.js
+*/
 
 (function() {
     var root = this;
@@ -21,11 +21,11 @@
     var _ = root._;
     if (!_ && (typeof require !== 'undefined')) _ = require('underscore')._;
 
-    /* Return previous value of global Barcodo object,
-     * if requested.
-     * 
-     * @return {Object}
-     */
+    /** Return previous value of global Barcodo object,
+    * if requested.
+    * 
+    * @return {Object}
+    */
     Barcodo.noConflict = function() {
         root.Barcodo = previousBarcodo;
         return this;
@@ -34,6 +34,11 @@
     // Is set to true when we start watching for input.
     var watching = false;
 
+    /**
+    * Proxy for constructor?
+    *
+    * @param {Object}  opts - an object with configuration parameters
+    */
     Barcodo.Scanner = function(opts) {
         this._configure(opts);
     };
@@ -56,8 +61,13 @@
         barcodeMaxLength: 13,
         barcodeMinLength: 12,
         barcodeBreakSymbolCode: 13,
-        barcodeStartedThreshold: 5,
+        barcodeStartedThreshold: 7,
 
+        /**
+        * _configure?
+        *
+        * @param {Object}  opts - an object with configuration parameters
+        */
         _configure: function(opts) {
             var scanner = this;
             _.each(scannerOpts, function(option) {
@@ -79,7 +89,8 @@
                 'startBarcodeReading',
                 'stopBarcodeReading');
         },
-       /**
+        /**
+        * Checks barcode length
         * 
         * @return {boolean}
         */
@@ -90,7 +101,7 @@
             } else { return false; }
         },
 
-       /**
+        /**
         * Keyup event handler.
         * Detects barcode sequence from scanner.
         *
@@ -109,7 +120,7 @@
                 this.stopBarcodeReading();
 
             if (!this.isBarcodeReading && firstBarcodeSymbol) {
-                console.debug("GO");
+                console.debug("Barcodo: get first symbol ("+currentChar+")");
                 // Seems like  the first symbol matches. Time will tell
                 // if it's a scanner started triggering events, or it's
                 // just some human.
@@ -121,17 +132,17 @@
                 // (Timeout is still running, otherwise isBarcodeReading
                 // would be false)
                 this.barcode += currentChar;
-                console.debug("GO ON!!");
+                console.debug("Barcodo: continue reading ("+currentChar+")");
                 if (this.barcode.length == this.barcodeStartedThreshold) {
                     // If we got enough chars to be confident that it's
                     // the scanner sending the barcode, trigger the first
                     // callback.
-                    console.debug("ALMOST THERE!!!");
+                    console.debug("Barcodo: threshold reached, this is scanner");
                     this.barcodeStarted(this.barcode);
                 }
 
             } else if (breakBarcodeSymbol && this.validBarcodeLength()) {
-                console.debug("Done");
+                console.debug("Barcodo: reading compltete");
                 // Seems like our scanner has just finished reading a barcode.
                 // Trigger the callback and shut everything down.
                 this.barcodeComplete(this.barcode);
@@ -143,17 +154,19 @@
         },
 
         /**
-        *  Obvious function name
+        *  Obvious function name, but comment is requried :)
         */
         startWatching: function() {
-            if (watching)
+            if (watching) {
                 throw new Error('Barcodo is already watching input');
+            } else {
+                watching = true;
+                console.debug("Barcodo: started watching");
 
-            console.debug("Started watching");
-
-            // Handle all keypress events.
-            // TODO: Optimize event binding.
-            document.onkeyup = this.checkKeycode;
+                // Handle all keypress events.
+                // TODO: Optimize event binding.
+                document.onkeyup = this.checkKeycode;
+            }
         },
 
         /**
@@ -164,7 +177,7 @@
         */
         startBarcodeReading: function() {
             if (this.isBarcodeReading == false) {
-                console.debug("Started");
+                console.debug("Barcodo: started reading");
 
                 this.isBarcodeReading = true;
                 // We will clear the flag after the timeout.
@@ -183,7 +196,7 @@
         */
         stopBarcodeReading: function() {
             if (this.isBarcodeReading == true) {
-                console.debug("Stopped");
+                console.debug("Barcodo: reading interrupted");
 
                 this.isBarcodeReading = false;
                 clearTimeout(this.timer);
